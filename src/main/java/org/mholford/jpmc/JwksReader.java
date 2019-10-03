@@ -3,6 +3,7 @@ package org.mholford.jpmc;
 import org.jose4j.jwk.HttpsJwks;
 import org.jose4j.jwk.JsonWebKey;
 import org.jose4j.jwk.RsaJsonWebKey;
+import org.jose4j.jwk.RsaJwkGenerator;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
@@ -19,13 +20,13 @@ import java.util.List;
 public class JwksReader {
 
   private void exec() throws JoseException, InvalidJwtException, IOException {
+    // Get the key from JWKS
     HttpsJwks httpsJwks = new HttpsJwks("http://35.194.55.30:8080/auth/realms/demo/protocol/openid-connect/certs");
     List<JsonWebKey> jsonWebKeys = httpsJwks.getJsonWebKeys();
     JsonWebKey remoteWebKey = jsonWebKeys.get(0);
-    // Generate an RSA key pair, which will be used for signing and verification of the JWT, wrapped in a JWK
-    //RsaJsonWebKey rsaJsonWebKey = RsaJwkGenerator.generateJwk(2048);
 
-    // Create the Claims, which will be the content of the JWT
+    RsaJsonWebKey rsaJsonWebKey = RsaJwkGenerator.generateJwk(2048);
+
     JwtClaims claims = new JwtClaims();
     claims.setIssuer("Issuer");  // who creates the token and signs it
     claims.setAudience("Audience"); // to whom the token is intended to be sent
@@ -45,13 +46,7 @@ public class JwksReader {
     jws.setPayload(claims.toJson());
 
     // The JWT is signed using the private key
-    jws.setKey(remoteWebKey.getKey());
-
-
-    // Set the Key ID (kid) header because it's just the polite thing to do.
-    // We only have one key in this example but a using a Key ID helps
-    // facilitate a smooth key rollover process
-    //jws.setKeyIdHeaderValue(remoteWebKey.getKeyId());
+    jws.setKey(rsaJsonWebKey.getRsaPrivateKey());
 
     // Set the signature algorithm on the JWT/JWS that will integrity protect the claims
     jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
@@ -65,7 +60,7 @@ public class JwksReader {
 
 
     HttpsJwksVerificationKeyResolver resolver = new HttpsJwksVerificationKeyResolver(httpsJwks);
-    JwtConsumer consumer = new JwtConsumerBuilder().setVerificationKeyResolver(resolver).build();
+    JwtConsumer consumer = new JwtConsumerBuilder().setVerificationKey(remoteWebKey.getKey()).build();
     JwtClaims jwtClaims = consumer.processToClaims(jwt);
   }
   public static void main(String[] args) throws JoseException, InvalidJwtException, IOException {
