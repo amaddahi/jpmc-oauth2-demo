@@ -1,8 +1,8 @@
 package org.mholford.jpmc;
 
 import org.jose4j.jwk.HttpsJwks;
+import org.jose4j.jwk.JsonWebKey;
 import org.jose4j.jwk.RsaJsonWebKey;
-import org.jose4j.jwk.RsaJwkGenerator;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwt.JwtClaims;
@@ -12,17 +12,18 @@ import org.jose4j.jwt.consumer.JwtConsumerBuilder;
 import org.jose4j.keys.resolvers.HttpsJwksVerificationKeyResolver;
 import org.jose4j.lang.JoseException;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 public class JwksReader {
 
-  private void exec() throws JoseException, InvalidJwtException {
+  private void exec() throws JoseException, InvalidJwtException, IOException {
+    HttpsJwks httpsJwks = new HttpsJwks("http://35.194.55.30:8080/auth/realms/demo/protocol/openid-connect/certs");
+    List<JsonWebKey> jsonWebKeys = httpsJwks.getJsonWebKeys();
+    JsonWebKey remoteWebKey = jsonWebKeys.get(0);
     // Generate an RSA key pair, which will be used for signing and verification of the JWT, wrapped in a JWK
-    RsaJsonWebKey rsaJsonWebKey = RsaJwkGenerator.generateJwk(2048);
-
-    // Give the JWK a Key ID (kid), which is just the polite thing to do
-    rsaJsonWebKey.setKeyId("8uWg_pSdvPpUQLGzJYVnwZwT9rlGYBQAbPVJ1TeYu_A");
+    //RsaJsonWebKey rsaJsonWebKey = RsaJwkGenerator.generateJwk(2048);
 
     // Create the Claims, which will be the content of the JWT
     JwtClaims claims = new JwtClaims();
@@ -44,12 +45,13 @@ public class JwksReader {
     jws.setPayload(claims.toJson());
 
     // The JWT is signed using the private key
-    jws.setKey(rsaJsonWebKey.getPrivateKey());
+    jws.setKey(remoteWebKey.getKey());
+
 
     // Set the Key ID (kid) header because it's just the polite thing to do.
     // We only have one key in this example but a using a Key ID helps
     // facilitate a smooth key rollover process
-    jws.setKeyIdHeaderValue(rsaJsonWebKey.getKeyId());
+    //jws.setKeyIdHeaderValue(remoteWebKey.getKeyId());
 
     // Set the signature algorithm on the JWT/JWS that will integrity protect the claims
     jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
@@ -61,12 +63,12 @@ public class JwksReader {
     // of a JsonWebEncryption object and set the cty (Content Type) header to "jwt".
     String jwt = jws.getCompactSerialization();
 
-    HttpsJwks httpsJwks = new HttpsJwks("http://35.194.55.30:8080/auth/realms/demo/protocol/openid-connect/certs");
+
     HttpsJwksVerificationKeyResolver resolver = new HttpsJwksVerificationKeyResolver(httpsJwks);
     JwtConsumer consumer = new JwtConsumerBuilder().setVerificationKeyResolver(resolver).build();
     JwtClaims jwtClaims = consumer.processToClaims(jwt);
   }
-  public static void main(String[] args) throws JoseException, InvalidJwtException {
+  public static void main(String[] args) throws JoseException, InvalidJwtException, IOException {
     new JwksReader().exec();
   }
 }
