@@ -34,7 +34,7 @@ public class KeycloakJwksReader {
     return String.format(orig, (Object[]) subs);
   }
 
-  public void verifyToken() throws IOException {
+  public AccessToken verifyToken() throws IOException {
     String accessToken = getToken();
     String kid = getKeyId(accessToken);
     PublicKey publicKey = getPublicKey(kid);
@@ -49,11 +49,11 @@ public class KeycloakJwksReader {
       System.out.println("Issued for : " + parsedToken.issuedFor);
       System.out.println("Issuer : " + parsedToken.getIssuer());
       System.out.println("Type : " + parsedToken.getType());
-
+      return parsedToken;
     } catch (VerificationException e) {
       e.printStackTrace();
     }
-
+    return null;
   }
 
   public String getToken() throws IOException {
