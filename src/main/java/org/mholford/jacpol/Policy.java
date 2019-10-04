@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class Policy {
   private String id;
-  private Target target;
+  private Map<String, Matcher> target;
   private String ruleCombiningAlgorithm;
   private int priority;
   private Map<String, String> obligations;
@@ -19,14 +19,6 @@ public class Policy {
 
   public void setId(String id) {
     this.id = id;
-  }
-
-  public Target getTarget() {
-    return target;
-  }
-
-  public void setTarget(Target target) {
-    this.target = target;
   }
 
   public String getRuleCombiningAlgorithm() {
@@ -59,5 +51,13 @@ public class Policy {
 
   public void setRules(List<Rule> rules) {
     this.rules = rules;
+  }
+
+  public Map<String, Matcher> getTarget() {
+    return target;
+  }
+
+  public void setTarget(Map<String, Matcher> target) {
+    this.target = target;
   }
 }

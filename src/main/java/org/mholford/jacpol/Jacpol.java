@@ -6,13 +6,15 @@ import org.keycloak.representations.AccessToken;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 public class Jacpol {
   private static Jacpol INSTANCE;
 
-  private Jacpol(){}
+  private Jacpol() {
+  }
 
   public static Jacpol get() {
     if (INSTANCE == null) {
@@ -31,8 +33,7 @@ public class Jacpol {
     List<String> output = new ArrayList<>();
     for (Policy policy : policySet.getPolicies()) {
       for (Rule rule : policy.getRules()) {
-        // Only first target.  I don't even know what multiple targets would mean here.
-        if (matchTarget(rule.getTarget().get(0), token)) {
+        if (matchTargets(rule.getTarget(), token)) {
           if (matchCondition(rule, token)) {
             output.add(getNeoRoleMapping(rule));
           }
@@ -42,13 +43,29 @@ public class Jacpol {
     return output;
   }
 
-  public boolean matchTarget(Target target, AccessToken token) {
-    String srcDomain = token.getIssuedFor();
-    if (!target.getSrcDomain().matches(srcDomain)) {
-      return false;
+  public boolean matchTargets(List<Map<String, Matcher>> targets, AccessToken token) {
+    boolean matches = true;
+    Iterator<Map<String, Matcher>> iter = targets.iterator();
+    do {
+      matches = matchTarget(iter.next(), token);
+    } while (iter.hasNext() && matches);
+    return matches;
+  }
+
+  public boolean matchTarget(Map<String, Matcher> target, AccessToken token) {
+    for (Map.Entry<String, Matcher> e : target.entrySet()) {
+      switch (e.getKey()) {
+        case "msgType":
+          String msgType = token.getType();
+          return e.getValue().matches(msgType);
+        case "srcDomain":
+          String srcDomain = token.getIssuedFor();
+          return e.getValue().matches(srcDomain);
+        default:
+          return false;
+      }
     }
-    String msgType = token.getType();
-    return target.getMsgType().matches(msgType);
+    return false;
   }
 
   public boolean matchCondition(Rule rule, AccessToken token) {

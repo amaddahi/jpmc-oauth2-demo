@@ -21,7 +21,7 @@
           "condition": {
             "realmAccessRole": {"contains": ["USER"]}},
           "effect": "permit",
-          "obligations": {"emailto": "admin@imt-atlantic.fr"},
+          "obligations": {"mapToNeoRole": "read"},
           "priority": 0
         }
       ]

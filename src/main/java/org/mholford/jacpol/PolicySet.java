@@ -7,7 +7,7 @@ public class PolicySet {
   private String id;
   private String version;
   private String update;
-  private Target target;
+  private Map<String, Matcher> target;
   private String policyCombiningAlgorithm;
   private Map<String, String> obligations;
   private int priority;
@@ -37,14 +37,6 @@ public class PolicySet {
 
   public void setUpdate(String update) {
     this.update = update;
-  }
-
-  public Target getTarget() {
-    return target;
-  }
-
-  public void setTarget(Target target) {
-    this.target = target;
   }
 
   public String getPolicyCombiningAlgorithm() {
@@ -77,5 +69,13 @@ public class PolicySet {
 
   public void setPolicies(List<Policy> policies) {
     this.policies = policies;
+  }
+
+  public Map<String, Matcher> getTarget() {
+    return target;
+  }
+
+  public void setTarget(Map<String, Matcher> target) {
+    this.target = target;
   }
 }

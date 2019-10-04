@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class Rule {
   private String id;
-  private List<Target> target;
+  private List<Map<String, Matcher>> target;
   private Map<String, Matcher> condition;
   private String effect;
   private Map<String, String> obligations;
@@ -19,14 +19,6 @@ public class Rule {
 
   public void setId(String id) {
     this.id = id;
-  }
-
-  public List<Target> getTarget() {
-    return target;
-  }
-
-  public void setTarget(List<Target> target) {
-    this.target = target;
   }
 
   public Map<String, Matcher> getCondition() {
@@ -59,5 +51,13 @@ public class Rule {
 
   public void setPriority(int priority) {
     this.priority = priority;
+  }
+
+  public List<Map<String, Matcher>> getTarget() {
+    return target;
+  }
+
+  public void setTarget(List<Map<String, Matcher>> target) {
+    this.target = target;
   }
 }

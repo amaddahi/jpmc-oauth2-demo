@@ -9,7 +9,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.keycloak.RSATokenVerifier;
+import org.keycloak.TokenVerifier;
 import org.keycloak.common.VerificationException;
 import org.keycloak.representations.AccessToken;
 
@@ -40,12 +40,18 @@ public class KeycloakJwksReader {
     PublicKey publicKey = getPublicKey(kid);
 
     try {
-      RSATokenVerifier rsTV = RSATokenVerifier.create(accessToken);
+      TokenVerifier<AccessToken> rsTV = TokenVerifier.create(accessToken, AccessToken.class);
       System.out.println("JWS Algorithm : " + rsTV.getHeader().getAlgorithm());
       System.out.println("JWS Type : " + rsTV.getHeader().getType());
       System.out.println("JWS Key Id : " + rsTV.getHeader().getKeyId());
 
-      AccessToken parsedToken = RSATokenVerifier.verifyToken(accessToken, publicKey, realmUrl, false, true);
+      AccessToken parsedToken = TokenVerifier.create(accessToken, AccessToken.class)
+              .publicKey(publicKey)
+              .withChecks(new TokenVerifier.RealmUrlCheck(realmUrl),
+                      TokenVerifier.IS_ACTIVE,
+                      new TokenVerifier.TokenTypeCheck("Bearer"))
+              .verify().getToken();
+
       System.out.println("Issued for : " + parsedToken.issuedFor);
       System.out.println("Issuer : " + parsedToken.getIssuer());
       System.out.println("Type : " + parsedToken.getType());
