@@ -13,39 +13,49 @@ import org.keycloak.TokenVerifier;
 import org.keycloak.common.VerificationException;
 import org.keycloak.representations.AccessToken;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Base64;
+import java.util.Properties;
 
 public class KeycloakJwksReader {
-  String realm = "demo";
-  String baseUrl = "http://35.194.55.30:8080";
-  String realmUrl = fmt("%s/auth/realms/%s", baseUrl, realm);
-  String certs = fmt("%s/auth/realms/%s/protocol/openid-connect/certs", baseUrl, realm);
-
-  String regClientId = "demo-client";
-  String regClientSecret = "00cbfeec-da96-4588-9d6e-6c6a46eb4ad7";
+  String realmUrl;
+  String jwksUrl;
+  String tokenUrl;
+  String clientId;
+  String clientSecret;
 
   private static String fmt(String orig, String... subs) {
     return String.format(orig, (Object[]) subs);
   }
 
-  public AccessToken verifyToken() throws IOException {
-    String accessToken = getToken();
-    String kid = getKeyId(accessToken);
+  public KeycloakJwksReader(Properties props) {
+    realmUrl = (String) props.get("oauth.realmUrl");
+    jwksUrl = (String) props.get("oauth.jwksUrl");
+    tokenUrl = (String) props.get("oauth.tokenUrl");
+    clientId = (String) props.get("oauth.clientId");
+    clientSecret = (String) props.get("oauth.clientSecret");
+  }
+
+  public AccessToken getVerifiedToken(String user, String pass) throws IOException {
+    String rawToken = getRawToken(user, pass);
+    String kid = getKeyId(rawToken);
     PublicKey publicKey = getPublicKey(kid);
 
     try {
-      TokenVerifier<AccessToken> rsTV = TokenVerifier.create(accessToken, AccessToken.class);
+      TokenVerifier<AccessToken> rsTV = TokenVerifier.create(rawToken, AccessToken.class);
       System.out.println("JWS Algorithm : " + rsTV.getHeader().getAlgorithm());
       System.out.println("JWS Type : " + rsTV.getHeader().getType());
       System.out.println("JWS Key Id : " + rsTV.getHeader().getKeyId());
 
-      AccessToken parsedToken = TokenVerifier.create(accessToken, AccessToken.class)
+      AccessToken parsedToken = TokenVerifier.create(rawToken, AccessToken.class)
               .publicKey(publicKey)
               .withChecks(new TokenVerifier.RealmUrlCheck(realmUrl),
                       TokenVerifier.IS_ACTIVE,
@@ -62,25 +72,21 @@ public class KeycloakJwksReader {
     return null;
   }
 
-  public String getToken() throws IOException {
+  public String getRawToken(String user, String pass) throws IOException {
     CloseableHttpClient client = HttpClients.createDefault();
 
-    String uri = fmt("%s/auth/realms/%s/protocol/openid-connect/token", baseUrl, realm);
-
     String postBody = fmt("grant_type=client_credentials&client_id=%s&client_secret=%s",
-            regClientId, regClientSecret);
-    HttpPost post = new HttpPost(uri);
+            clientId, clientSecret);
+    HttpPost post = new HttpPost(tokenUrl);
     post.addHeader("Content-Type", "application/x-www-form-urlencoded");
     post.setEntity(new StringEntity(postBody));
 
     CloseableHttpResponse response = client.execute(post);
     InputStream accessTokenStream = response.getEntity().getContent();
 
-    String accessToken = null;
-
     ObjectMapper om = new ObjectMapper();
     JsonNode rootNode = om.readTree(accessTokenStream);
-    accessToken = rootNode.get("access_token").asText();
+    String accessToken = rootNode.get("access_token").asText();
 
     response.close();
     client.close();
@@ -113,7 +119,7 @@ public class KeycloakJwksReader {
     PublicKey publicKey = null;
     CloseableHttpClient client = HttpClients.createDefault();
 
-    HttpGet get = new HttpGet(certs);
+    HttpGet get = new HttpGet(jwksUrl);
     CloseableHttpResponse response = client.execute(get);
 
     ObjectMapper om = new ObjectMapper();
@@ -165,8 +171,14 @@ public class KeycloakJwksReader {
   }
 
   public static void main(String[] args) {
+    Properties properties = new Properties();
+    try (BufferedReader reader = Files.newBufferedReader(Path.of("src/main/resources/conf/jpmc-oauth.conf"))) {
+      properties.load(reader);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     try {
-      new KeycloakJwksReader().verifyToken();
+      new KeycloakJwksReader(properties).getVerifiedToken("matt", "1234");
     } catch (IOException e) {
       e.printStackTrace();
     }
